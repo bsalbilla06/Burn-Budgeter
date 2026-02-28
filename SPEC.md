@@ -5,14 +5,14 @@ Burn Budgeter is a financial observability API for developers and startups. It p
 
 ## 2. Tech Stack
 - **Backend:** Go 1.22+ (Standard library `net/http` for JSON API).
-- **Authentication:** JWT (JSON Web Tokens) for stateless sessions.
-- **Database:** PostgreSQL (Storing user accounts, projects, tech stacks, and pricing data).
+- **Authentication:** Supabase Auth (Managing users and JWT verification).
+- **Database:** Supabase (PostgreSQL with Row Level Security).
 - **AI Integration:** Google Gemini API (for parsing `ARCHITECTURE.md`).
 - **Documentation:** OpenAPI 3.0 (Scalar).
-- **Hosting** AWS
+- **Hosting** Supabase / AWS
 
 ## 3. Core API Features
-1.  **User Authentication:** Secure registration and login using JWT.
+1.  **User Authentication:** Managed by Supabase Auth (Sign-up, Login, JWT issuing).
 2.  **Project Management:** CRUD endpoints for user-owned projects (Name, Cash on Hand, Currency).
 3.  **Service Stack Engine:**
     *   Add/Remove cloud instances (AWS EC2, RDS, S3).
@@ -23,13 +23,13 @@ Burn Budgeter is a financial observability API for developers and startups. It p
     *   Endpoint to POST `ARCHITECTURE.md` content.
     *   Returns a list of detected services and suggested quantities for verification.
 
-## 4. Database Schema (PostgreSQL)
-- `users`:
-    - `id`, `email`, `password_hash`, `created_at`.
+## 4. Database Schema (Supabase/Postgres)
+- `users` (Managed by Supabase `auth.users`):
+    - `id`, `email`, `created_at`.
 - `services`: Master list of provider pricing (Hardcoded/Seeded).
     - `id`, `provider`, `name`, `unit`, `price_per_unit`.
 - `projects`:
-    - `id`, `user_id` (FK), `name`, `cash_on_hand`, `currency`, `created_at`.
+    - `id`, `user_id` (UUID references auth.users.id), `name`, `cash_on_hand`, `currency`, `created_at`.
 - `project_services`: Junction table for a project's active stack.
     - `project_id`, `service_id`, `quantity`, `is_optimized`.
 

@@ -14,9 +14,9 @@ Burn Budgeter is a financial observability API designed for developers and start
 
 ### Tech Stack:
 - **Language:** Go 1.22+ (using the standard library `net/http` for JSON API).
-- **Database:** PostgreSQL (storing user accounts, projects, tech stacks, and pricing data).
+- **Database:** Supabase (PostgreSQL hosting with RLS).
 - **AI Integration:** Google Gemini API (for architecture parsing).
-- **Authentication:** JWT (JSON Web Tokens).
+- **Authentication:** Supabase Auth (JWT verification).
 - **Documentation:** OpenAPI 3.0.
 
 ---
@@ -30,8 +30,8 @@ Burn Budgeter is a financial observability API designed for developers and start
 ├── internal/
 │   ├── handlers/            # HTTP handlers for JSON API endpoints
 │   ├── models/              # Domain models and shared structs
-│   ├── middleware/          # JWT and other API middleware
-│   ├── database/            # Database connection and migrations
+│   ├── middleware/          # Supabase Auth/JWT middleware
+│   ├── database/            # Supabase connection logic
 │   └── parser/              # Gemini AI integration logic
 ├── api/
 │   └── openapi.yaml         # API Documentation (OpenAPI)
@@ -56,7 +56,18 @@ The project uses a `Makefile` for common development tasks.
 
 ---
 
-## 4. Development Conventions
+## 4. Environment Variables
+The following variables are required in your `.env` file for Supabase and Database integration:
+- `SUPABASE_URL`: Supabase project API URL.
+- `SUPABASE_PUBLISHABLE`: Supabase Anon/Public Key.
+- `SUPABASE_SECRET`: Supabase Service Role Key.
+- `SUPABASE_JWT_SIGNING`: JWT Secret for token verification.
+- `SUPABASE_DB_CONN`: PostgreSQL connection string. **Use the "Pooler" string (port 6543) from Supabase settings to ensure IPv4 compatibility.**
+- `SUPABASE_DB_PASSWORD`: Database password.
+
+---
+
+## 5. Development Conventions
 
 ### Coding Style
 - **Standard Library First:** Prioritize using the Go standard library (e.g., `net/http`, `encoding/json`).
@@ -64,13 +75,13 @@ The project uses a `Makefile` for common development tasks.
 - **Surgical Edits:** When modifying code, use the `replace` tool for precise, targeted updates.
 
 ### Database Integration
-- **Mock Data:** Currently, the handlers in `internal/handlers/handlers.go` use in-memory maps and slices as mock databases.
+- **Supabase Integration:** Transition handlers to use Supabase Go client or direct SQL queries via Postgres connection string.
 - **MARK Comments:** Use `// MARK: Need ...` comments to flag areas requiring real database implementation (e.g., SQL queries, transactions).
 
 ### API Design
 - **Multipart Form Uploads:** The architecture analysis endpoint (`POST /v1/projects/{id}/analyze`) accepts a `multipart/form-data` request with an `architecture` file part.
 - **Standardized Error Responses:** All error responses follow the `{ "error": "code", "message": "human-readable" }` format.
-- **Stateless Authentication:** All protected endpoints (flagged as `[Auth Required]` in `API_DOCS.md`) will require a Bearer JWT token once authentication is implemented.
+- **Stateless Authentication:** All protected endpoints (flagged as `[Auth Required]` in `API_DOCS.md`) will require a Bearer JWT token issued by Supabase.
 
 ### Documentation
 - **Keep in Sync:** Ensure `SPEC.md` and `API_DOCS.md` are updated immediately when the API design or database schema changes.
@@ -78,7 +89,7 @@ The project uses a `Makefile` for common development tasks.
 ---
 
 ## 5. Ongoing Tasks & TODOs
-- [ ] Implement JWT Authentication middleware and handlers.
-- [ ] Transition from mock data to a real PostgreSQL database.
+- [ ] Implement Supabase Auth middleware.
+- [ ] Transition from mock data to real Supabase PostgreSQL.
 - [ ] Implement the Google Gemini integration for the architecture parser.
 - [ ] Finalize the OpenAPI specification in `api/openapi.yaml`.

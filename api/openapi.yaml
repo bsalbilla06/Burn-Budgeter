@@ -1,1 +1,282 @@
-# OpenAPI 3.0 Documentation
+openapi: 3.0.3
+info:
+  title: Burn Budgeter API
+  description: |
+    Financial observability API for developers and startups. 
+    Track cloud and AI infrastructure burn rates in real-time.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/v1
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      summary: API Health Check
+      description: Returns the status of the API and its database connection.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: up
+                  database:
+                    type: string
+                    example: connected
+        '500':
+          description: Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: down
+                  database:
+                    type: string
+                    example: error
+
+  /projects:
+    post:
+      summary: Create a new project
+      description: Initializes a new project. Associated with the authenticated user (hardcoded for demo).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - cash_on_hand
+              properties:
+                name:
+                  type: string
+                  example: "My Startup"
+                cash_on_hand:
+                  type: number
+                  format: float
+                  example: 5000.00
+                currency:
+                  type: string
+                  example: "USD"
+                  default: "USD"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /projects/{id}:
+    get:
+      summary: Get project details
+      description: Returns project statistics including calculated burn rate and runway.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{id}/stack:
+    post:
+      summary: Add or update service in stack
+      description: Adds a service to the project stack or updates its quantity if it already exists.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - service_id
+                - quantity
+              properties:
+                service_id:
+                  type: integer
+                  example: 1
+                quantity:
+                  type: number
+                  example: 730
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Service added to stack"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{id}/stack/{sid}:
+    delete:
+      summary: Remove service from stack
+      description: Removes a specific service from the project's infrastructure stack.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sid
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: No Content
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{id}/analyze:
+    post:
+      summary: Analyze architecture file
+      description: Upload an ARCHITECTURE.md file to automatically detect services.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                architecture:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  content_received_length:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /services:
+    get:
+      summary: List all services
+      description: Returns the master list of cloud and AI services with their pricing data.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+
+components:
+  schemas:
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        cash_on_hand:
+          type: number
+        currency:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        burn_rate:
+          type: number
+          description: Monthly infrastructure cost
+        runway:
+          type: number
+          description: Estimated months until cash runs out (-1 for infinite)
+    
+    Service:
+      type: object
+      properties:
+        id:
+          type: integer
+        provider:
+          type: string
+        name:
+          type: string
+        unit:
+          type: string
+        price_per_unit:
+          type: number
+
+  responses:
+    BadRequest:
+      description: Malformed request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    schemas:
+      Error:
+        type: object
+        properties:
+          error:
+            type: string
+          message:
+            type: string
