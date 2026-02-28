@@ -1,0 +1,1 @@
+-- Initial pricing data for AWS and AI services
