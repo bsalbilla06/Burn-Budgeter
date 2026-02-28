@@ -2,11 +2,14 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/user/burnbudgeter/internal/database"
 	"github.com/user/burnbudgeter/internal/models"
+	"github.com/user/burnbudgeter/internal/parser"
 )
 
 // --- HELPERS ---
@@ -228,10 +231,59 @@ func AnalyzeArchitecture(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// MARK: Call Gemini AI API to parse architecture and map against 'services' table
+	// Call Gemini AI API to parse architecture
+	detected, err := parser.ParseArchitecture(r.Context(), content)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "ai_error", "Failed to analyze architecture: "+err.Error())
+		return
+	}
+
+	// Map detected services to database IDs
+	var suggestions []models.ProjectService
+	for _, ds := range detected {
+		var serviceID int
+		// Try fuzzy match on name and provider
+		// We prioritize "Input" for AI models if not specified
+		query := "SELECT id FROM services WHERE provider ILIKE $1"
+		params := []interface{}{"%"+ds.Provider+"%"}
+		
+		nameFilter := "%"+ds.Name+"%"
+		// If it's an AI provider, we try to match the "tier" (e.g. Sonnet, Pro, Mini)
+		if ds.Provider == "OpenAI" || ds.Provider == "Anthropic" || ds.Provider == "Gemini" {
+			if strings.Contains(strings.ToLower(ds.Name), "pro") {
+				nameFilter = "%Pro%Input%"
+			} else if strings.Contains(strings.ToLower(ds.Name), "sonnet") {
+				nameFilter = "%Sonnet%Input%"
+			} else if strings.Contains(strings.ToLower(ds.Name), "opus") {
+				nameFilter = "%Opus%Input%"
+			} else if strings.Contains(strings.ToLower(ds.Name), "mini") || strings.Contains(strings.ToLower(ds.Name), "haiku") || strings.Contains(strings.ToLower(ds.Name), "flash") {
+				nameFilter = "%Mini%Input%"
+				if strings.Contains(strings.ToLower(ds.Name), "flash") {
+					nameFilter = "%Flash%Input%"
+				}
+			} else {
+				// Default to Input
+				nameFilter = "%Input%"
+			}
+		}
+		
+		query += " AND name ILIKE $2 LIMIT 1"
+		params = append(params, nameFilter)
+
+		err := database.DB.QueryRow(query, params...).Scan(&serviceID)
+
+		if err == nil {
+			suggestions = append(suggestions, models.ProjectService{
+				ProjectID: projectID,
+				ServiceID: serviceID,
+				Quantity:  ds.Quantity,
+			})
+		}
+	}
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"message":                 "Analysis pending implementation",
-		"content_received_length": len(content),
+		"message":     "Analysis complete",
+		"suggestions": suggestions,
 	})
 }
 
