@@ -5,31 +5,30 @@ Burn Budgeter is a financial observability API for developers and startups. It p
 
 ## 2. Tech Stack
 - **Backend:** Go 1.22+ (Standard library `net/http` for JSON API).
-- **Authentication:** Supabase Auth (Managing users and JWT verification).
-- **Database:** Supabase (PostgreSQL with Row Level Security).
+- **Database:** Supabase (PostgreSQL).
 - **AI Integration:** Google Gemini API (for parsing `ARCHITECTURE.md`).
 - **Documentation:** OpenAPI 3.0 (Scalar).
 - **Hosting** Supabase / AWS
 
 ## 3. Core API Features
-1.  **User Authentication:** Managed by Supabase Auth (Sign-up, Login, JWT issuing).
-2.  **Project Management:** CRUD endpoints for user-owned projects (Name, Cash on Hand, Currency).
-3.  **Service Stack Engine:**
+1.  **Project Management:** CRUD endpoints for public projects (Name, Cash on Hand, Currency).
+2.  **Service Stack Engine:**
     *   Add/Remove cloud instances (AWS EC2, RDS, S3).
     *   Add/Remove AI models (Gemini, OpenAI, Anthropic).
     *   Support for usage-based units (hours, 1k tokens, GB-months).
+3.  **Custom Services:** Users can create, update, and delete their own custom services and pricing.
 4.  **Runway & Burn Analytics:** Calculated fields for monthly burn and "Death Date" estimation.
 5.  **AI Architecture Parser:**
     *   Endpoint to POST `ARCHITECTURE.md` content.
-    *   Returns a list of detected services and suggested quantities for verification.
+    *   Automatically resets and updates project stack.
+6.  **Architecture Exporter:**
+    *   Endpoint to generate a professional `ARCHITECTURE.md` from a project stack.
 
 ## 4. Database Schema (Supabase/Postgres)
-- `users` (Managed by Supabase `auth.users`):
-    - `id`, `email`, `created_at`.
-- `services`: Master list of provider pricing (Hardcoded/Seeded).
+- `services`: Master list of provider pricing + user defined services.
     - `id`, `provider`, `name`, `unit`, `price_per_unit`.
 - `projects`:
-    - `id`, `user_id` (UUID references auth.users.id), `name`, `cash_on_hand`, `currency`, `created_at`.
+    - `id`, `name`, `cash_on_hand`, `currency`, `created_at`.
 - `project_services`: Junction table for a project's active stack.
     - `project_id`, `service_id`, `quantity`, `is_optimized`.
 

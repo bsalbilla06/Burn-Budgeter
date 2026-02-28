@@ -11,10 +11,9 @@ type Service struct {
 	PricePerUnit float64 `json:"price_per_unit"`
 }
 
-// Project represents a user's project
+// Project represents a project infrastructure stack
 type Project struct {
 	ID         string    `json:"id"`
-	UserID     string    `json:"user_id,omitempty"` // For future Auth implementation
 	Name       string    `json:"name"`
 	CashOnHand float64   `json:"cash_on_hand"`
 	Currency   string    `json:"currency"`

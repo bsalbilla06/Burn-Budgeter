@@ -1,15 +1,12 @@
-# Burn Budgeter API Documentation
+# Burn Budgeter API Documentation (Public)
 
-This documentation outlines the JSON API for Burn Budgeter, a financial observability tool for tracking cloud and AI burn rates.
+This documentation outlines the public JSON API for Burn Budgeter, a financial observability tool for tracking cloud and AI burn rates.
 
 ## Base URL
 `http://localhost:8080/v1`
 
-## Authentication (Demo Status)
-**Current Status: DISABLED for Demo.**
-The API is currently configured to bypass token verification and use a hardcoded user account (`9b5940aa-bbf6-40f7-8ce8-30402a8c8737`) for all requests. 
-
-*Planned Implementation:* Protected endpoints will require a Bearer token issued by Supabase Auth in the `Authorization` header.
+## Authentication
+**None.** This API is public. All projects and services are modifiable by any client.
 
 ## Standard Error Response
 All error responses follow this JSON structure:
@@ -25,7 +22,7 @@ All error responses follow this JSON structure:
 ## 1. System
 
 ### Health Check
-**`GET /health`** (Public)
+**`GET /health`**
 Returns the status of the API and the Supabase database connection.
 
 ---
@@ -36,16 +33,17 @@ Returns the status of the API and the Supabase database connection.
 **`POST /projects`**
 Initializes a new project.
 
-**Request Body:**
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `name` | `string` | The name of the project. (Required) |
-| `cash_on_hand` | `float` | Current total budget/cash available. (Required) |
-| `currency` | `string` | ISO currency code (e.g., "USD"). (Default: "USD") |
-
 ### Get Project Details
 **`GET /projects/{id}`**
 Returns project stats, including calculated monthly **burn rate** and **runway**.
+
+### Update Project
+**`PATCH /projects/{id}`**
+Update project metadata (name, cash on hand, currency).
+
+### Delete Project
+**`DELETE /projects/{id}`**
+Permanently deletes a project and its stack.
 
 ---
 
@@ -53,13 +51,7 @@ Returns project stats, including calculated monthly **burn rate** and **runway**
 
 ### Add or Update Service in Stack
 **`POST /projects/{id}/stack`**
-Adds a cloud or AI service to the project's infrastructure list. If the service already exists in the stack, it updates the quantity.
-
-**Request Body:**
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `service_id` | `int` | ID of the service from the `/services` list. |
-| `quantity` | `float` | Number of units per month (e.g., 730 hours, 10M tokens). |
+Adds a service to the project stack or updates its quantity.
 
 ### Remove Service from Stack
 **`DELETE /projects/{id}/stack/{service_id}`**
@@ -71,22 +63,29 @@ Removes a specific service entry from the project stack.
 
 ### Analyze Architecture
 **`POST /projects/{id}/analyze`**
-Parses an `ARCHITECTURE.md` file to automatically detect services. 
-**Note:** This will FULLY RESET the project's current tech stack and replace it with the detected services.
-
-**Request Body (multipart/form-data):**
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `architecture` | `file` | The `ARCHITECTURE.md` file to analyze. |
+Parses an `ARCHITECTURE.md` file. **Note:** This will FULLY RESET the project's stack.
 
 ### Export Architecture
 **`GET /projects/{id}/export-architecture`**
-Generates a professional `ARCHITECTURE.md` markdown file based on the project's current tech stack using AI.
+Generates a professional `ARCHITECTURE.md` markdown file from the current stack.
 
 ---
 
-## 5. Reference Data
+## 5. Service Catalog
 
 ### List Available Services
-**`GET /services`**
-Returns the master list of supported cloud and AI services along with their 2026 pricing data.
+**`GET /services?provider={name}`**
+Returns the master list of cloud and AI services and pricing.
+*   **Query Param:** `provider` (optional) - Filter results by provider name (e.g., `AWS`, `GCP`, `OpenAI`).
+
+### Create a Custom Service
+**`POST /services`**
+Define a new custom service and price.
+
+### Update Service
+**`PATCH /services/{id}`**
+Update an existing service's details or pricing.
+
+### Delete Service
+**`DELETE /services/{id}`**
+Permanently remove a service from the catalog.

@@ -6,18 +6,18 @@ This file provides the necessary context and instructions for Gemini CLI to effe
 Burn Budgeter is a financial observability API designed for developers and startups. It provides real-time "Burn & Runway" calculations by analyzing project infrastructure stacks across Cloud (AWS/GCP) and AI (Gemini/OpenAI) services.
 
 ### Core Features:
-- **User Authentication:** JWT-based secure registration and login (Planned).
-- **Project Management:** CRUD operations for user-owned projects, including budget and currency tracking.
+- **Project Management:** CRUD operations for public projects, including budget and currency tracking.
 - **Service Stack Engine:** Manage a project's active infrastructure stack (cloud instances, AI models).
+- **Custom Services:** Full CRUD for custom cloud or AI services and pricing.
 - **Runway & Burn Analytics:** Real-time calculation of monthly burn and estimated "Death Date".
-- **AI Architecture Parser:** Automatically detect and suggest services by parsing `ARCHITECTURE.md` files using Google Gemini.
+- **AI Architecture Parser:** Automatically reset and update a project's stack by parsing `ARCHITECTURE.md` files using Google Gemini.
+- **AI Architecture Exporter:** Generate professional `ARCHITECTURE.md` files from existing project stacks.
 
 ### Tech Stack:
 - **Language:** Go 1.22+ (using the standard library `net/http` for JSON API).
-- **Database:** Supabase (PostgreSQL hosting with RLS).
-- **AI Integration:** Google Gemini API (for architecture parsing).
-- **Authentication:** Supabase Auth (JWT verification).
-- **Documentation:** OpenAPI 3.0.
+- **Database:** Supabase (PostgreSQL).
+- **AI Integration:** Google Gemini API (for architecture parsing and generation).
+- **Documentation:** OpenAPI 3.0 (Scalar).
 
 ---
 
@@ -30,12 +30,12 @@ Burn Budgeter is a financial observability API designed for developers and start
 ├── internal/
 │   ├── handlers/            # HTTP handlers for JSON API endpoints
 │   ├── models/              # Domain models and shared structs
-│   ├── middleware/          # Supabase Auth/JWT middleware
 │   ├── database/            # Supabase connection logic
 │   └── parser/              # Gemini AI integration logic
 ├── api/
 │   └── openapi.yaml         # API Documentation (OpenAPI)
 ├── scripts/
+│   ├── schema.sql           # Database schema (Public)
 │   └── seed_pricing.sql     # Database seeds (pricing data)
 ├── Makefile                 # Build and development commands
 ├── SPEC.md                  # Project technical specification
@@ -57,13 +57,9 @@ The project uses a `Makefile` for common development tasks.
 ---
 
 ## 4. Environment Variables
-The following variables are required in your `.env` file for Supabase and Database integration:
-- `SUPABASE_URL`: Supabase project API URL.
-- `SUPABASE_PUBLISHABLE`: Supabase Anon/Public Key.
-- `SUPABASE_SECRET`: Supabase Service Role Key.
-- `SUPABASE_JWT_SIGNING`: JWT Secret for token verification.
-- `SUPABASE_DB_CONN`: PostgreSQL connection string. **Use the "Pooler" string (port 6543) from Supabase settings to ensure IPv4 compatibility.**
-- `SUPABASE_DB_PASSWORD`: Database password.
+The following variables are required in your `.env` file for Supabase and Gemini integration:
+- `SUPABASE_DB_CONN`: PostgreSQL connection string. **Use the "Pooler" string (port 6543) from Supabase settings.**
+- `GEMINI_API_KEY`: API key for Google Gemini.
 
 ---
 
@@ -75,21 +71,18 @@ The following variables are required in your `.env` file for Supabase and Databa
 - **Surgical Edits:** When modifying code, use the `replace` tool for precise, targeted updates.
 
 ### Database Integration
-- **Supabase Integration:** Transition handlers to use Supabase Go client or direct SQL queries via Postgres connection string.
-- **MARK Comments:** Use `// MARK: Need ...` comments to flag areas requiring real database implementation (e.g., SQL queries, transactions).
+- **Public API:** There are no users or authentication. All data is public and modifiable by any API client.
+- **MARK Comments:** Use `// MARK: Need ...` comments to flag areas requiring implementation updates.
 
 ### API Design
-- **Multipart Form Uploads:** The architecture analysis endpoint (`POST /v1/projects/{id}/analyze`) accepts a `multipart/form-data` request with an `architecture` file part.
 - **Standardized Error Responses:** All error responses follow the `{ "error": "code", "message": "human-readable" }` format.
-- **Stateless Authentication:** All protected endpoints (flagged as `[Auth Required]` in `API_DOCS.md`) will require a Bearer JWT token issued by Supabase.
-
-### Documentation
-- **Keep in Sync:** Ensure `SPEC.md` and `API_DOCS.md` are updated immediately when the API design or database schema changes.
+- **Scalar Documentation:** Documentation is served at `/docs`.
 
 ---
 
-## 5. Ongoing Tasks & TODOs
-- [ ] Implement Supabase Auth middleware.
-- [ ] Transition from mock data to real Supabase PostgreSQL.
-- [ ] Implement the Google Gemini integration for the architecture parser.
+## 6. Ongoing Tasks & TODOs
+- [x] Implement AI Architecture Parser.
+- [x] Implement AI Architecture Exporter.
+- [x] Transition to real Supabase PostgreSQL.
+- [x] Enable Custom Service CRUD.
 - [ ] Finalize the OpenAPI specification in `api/openapi.yaml`.

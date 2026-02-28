@@ -4,6 +4,7 @@ info:
   description: |
     Financial observability API for developers and startups. 
     Track cloud and AI infrastructure burn rates in real-time.
+    This API is public and does not require authentication.
   version: 1.0.0
 servers:
   - url: http://localhost:8080/v1
@@ -13,222 +14,157 @@ paths:
   /health:
     get:
       summary: API Health Check
-      description: Returns the status of the API and its database connection.
       responses:
         '200':
           description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: up
-                  database:
-                    type: string
-                    example: connected
-        '500':
-          description: Server Error
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: down
-                  database:
-                    type: string
-                    example: error
 
   /projects:
     post:
-      summary: Create a new project
-      description: Initializes a new project. Associated with the authenticated user (hardcoded for demo).
+      summary: Create a project
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required:
-                - name
-                - cash_on_hand
+              required: [name, cash_on_hand]
               properties:
-                name:
-                  type: string
-                  example: "My Startup"
-                cash_on_hand:
-                  type: number
-                  format: float
-                  example: 5000.00
-                currency:
-                  type: string
-                  example: "USD"
-                  default: "USD"
+                name: { type: string }
+                cash_on_hand: { type: number }
+                currency: { type: string, default: "USD" }
       responses:
         '201':
           description: Created
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/Project'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/ValidationError'
+              schema: { $ref: '#/components/schemas/Project' }
 
   /projects/{id}:
     get:
       summary: Get project details
-      description: Returns project statistics including calculated burn rate and runway.
       parameters:
         - name: id
           in: path
           required: true
-          schema:
-            type: string
-            format: uuid
+          schema: { type: string, format: uuid }
       responses:
         '200':
           description: OK
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/Project'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /projects/{id}/stack:
-    post:
-      summary: Add or update service in stack
-      description: Adds a service to the project stack or updates its quantity if it already exists.
+              schema: { $ref: '#/components/schemas/Project' }
+    patch:
+      summary: Update project
       parameters:
         - name: id
           in: path
           required: true
-          schema:
-            type: string
-            format: uuid
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                cash_on_hand: { type: number }
+                currency: { type: string }
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: Delete project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204':
+          description: No Content
+
+  /projects/{id}/stack:
+    post:
+      summary: Add/Update service in stack
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required:
-                - service_id
-                - quantity
+              required: [service_id, quantity]
               properties:
-                service_id:
-                  type: integer
-                  example: 1
-                quantity:
-                  type: number
-                  example: 730
+                service_id: { type: integer }
+                quantity: { type: number }
       responses:
         '200':
           description: Success
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Service added to stack"
-        '404':
-          $ref: '#/components/responses/NotFound'
 
   /projects/{id}/stack/{sid}:
     delete:
       summary: Remove service from stack
-      description: Removes a specific service from the project's infrastructure stack.
       parameters:
         - name: id
           in: path
           required: true
-          schema:
-            type: string
-            format: uuid
+          schema: { type: string, format: uuid }
         - name: sid
           in: path
           required: true
-          schema:
-            type: integer
+          schema: { type: integer }
       responses:
         '204':
           description: No Content
-        '404':
-          $ref: '#/components/responses/NotFound'
 
   /projects/{id}/analyze:
     post:
-      summary: Analyze architecture file
-      description: Upload an ARCHITECTURE.md file. This will FULLY RESET and update the project stack with the detected services.
+      summary: Analyze ARCHITECTURE.md
+      description: Resets and updates stack based on uploaded file.
       parameters:
         - name: id
           in: path
           required: true
-          schema:
-            type: string
-            format: uuid
+          schema: { type: string, format: uuid }
       requestBody:
         content:
           multipart/form-data:
             schema:
               type: object
               properties:
-                architecture:
-                  type: string
-                  format: binary
+                architecture: { type: string, format: binary }
       responses:
         '200':
           description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  updated_services:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ProjectService'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
 
   /projects/{id}/export-architecture:
     get:
-      summary: Generate ARCHITECTURE.md
-      description: Generates a descriptive ARCHITECTURE.md file based on the project's current tech stack using AI.
+      summary: Export ARCHITECTURE.md
       parameters:
         - name: id
           in: path
           required: true
-          schema:
-            type: string
-            format: uuid
+          schema: { type: string, format: uuid }
       responses:
         '200':
           description: OK
           content:
             text/markdown:
-              schema:
-                type: string
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          description: Project has no services
+              schema: { type: string }
 
   /services:
     get:
       summary: List all services
-      description: Returns the master list of cloud and AI services with their pricing data.
+      parameters:
+        - name: provider
+          in: query
+          description: Optional filter to limit results by provider (e.g. AWS, GCP, OpenAI)
+          required: false
+          schema: { type: string }
       responses:
         '200':
           description: OK
@@ -236,85 +172,76 @@ paths:
             application/json:
               schema:
                 type: array
-                items:
-                  $ref: '#/components/schemas/Service'
+                items: { $ref: '#/components/schemas/Service' }
+    post:
+      summary: Create custom service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, name, unit, price_per_unit]
+              properties:
+                provider: { type: string }
+                name: { type: string }
+                unit: { type: string }
+                price_per_unit: { type: number }
+      responses:
+        '201':
+          description: Created
+
+  /services/{id}:
+    patch:
+      summary: Update service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider: { type: string }
+                name: { type: string }
+                unit: { type: string }
+                price_per_unit: { type: number }
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: Delete service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: No Content
+        '409':
+          description: Conflict - Service is used in a project
 
 components:
   schemas:
     Project:
       type: object
       properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        cash_on_hand:
-          type: number
-        currency:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-        burn_rate:
-          type: number
-          description: Monthly infrastructure cost
-        runway:
-          type: number
-          description: Estimated months until cash runs out (-1 for infinite)
-    
+        id: { type: string, format: uuid }
+        name: { type: string }
+        cash_on_hand: { type: number }
+        currency: { type: string }
+        created_at: { type: string, format: date-time }
+        burn_rate: { type: number }
+        runway: { type: number }
     Service:
       type: object
       properties:
-        id:
-          type: integer
-        provider:
-          type: string
-        name:
-          type: string
-        unit:
-          type: string
-        price_per_unit:
-          type: number
-
-    ProjectService:
-      type: object
-      properties:
-        project_id:
-          type: string
-          format: uuid
-        service_id:
-          type: integer
-        quantity:
-          type: number
-        is_optimized:
-          type: boolean
-
-  responses:
-    BadRequest:
-      description: Malformed request
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    NotFound:
-      description: Resource not found
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    ValidationError:
-      description: Validation failed
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    
-    schemas:
-      Error:
-        type: object
-        properties:
-          error:
-            type: string
-          message:
-            type: string
+        id: { type: integer }
+        provider: { type: string }
+        name: { type: string }
+        unit: { type: string }
+        price_per_unit: { type: number }

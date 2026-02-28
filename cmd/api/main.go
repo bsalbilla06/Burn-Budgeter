@@ -25,6 +25,8 @@ func main() {
 	// Projects
 	mux.HandleFunc("POST /v1/projects", handlers.CreateProject)
 	mux.HandleFunc("GET /v1/projects/{id}", handlers.GetProject)
+	mux.HandleFunc("PATCH /v1/projects/{id}", handlers.UpdateProject)
+	mux.HandleFunc("DELETE /v1/projects/{id}", handlers.DeleteProject)
 	
 	// Service Stack
 	mux.HandleFunc("POST /v1/projects/{id}/stack", handlers.AddServiceToStack)
@@ -36,6 +38,9 @@ func main() {
 	
 	// Reference Data
 	mux.HandleFunc("GET /v1/services", handlers.ListServices)
+	mux.HandleFunc("POST /v1/services", handlers.CreateService)
+	mux.HandleFunc("PATCH /v1/services/{id}", handlers.UpdateService)
+	mux.HandleFunc("DELETE /v1/services/{id}", handlers.DeleteService)
 
 	// Documentation (Scalar)
 	mux.HandleFunc("GET /docs", func(w http.ResponseWriter, r *http.Request) {
