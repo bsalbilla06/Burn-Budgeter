@@ -166,7 +166,7 @@ paths:
   /projects/{id}/analyze:
     post:
       summary: Analyze architecture file
-      description: Upload an ARCHITECTURE.md file to automatically detect services.
+      description: Upload an ARCHITECTURE.md file. This will FULLY RESET and update the project stack with the detected services.
       parameters:
         - name: id
           in: path
@@ -193,12 +193,37 @@ paths:
                 properties:
                   message:
                     type: string
-                  content_received_length:
-                    type: integer
+                  updated_services:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProjectService'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /projects/{id}/export-architecture:
+    get:
+      summary: Generate ARCHITECTURE.md
+      description: Generates a descriptive ARCHITECTURE.md file based on the project's current tech stack using AI.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            text/markdown:
+              schema:
+                type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Project has no services
 
   /services:
     get:
@@ -251,6 +276,19 @@ components:
           type: string
         price_per_unit:
           type: number
+
+    ProjectService:
+      type: object
+      properties:
+        project_id:
+          type: string
+          format: uuid
+        service_id:
+          type: integer
+        quantity:
+          type: number
+        is_optimized:
+          type: boolean
 
   responses:
     BadRequest:

@@ -64,3 +64,43 @@ func ParseArchitecture(ctx context.Context, content string) ([]DetectedService, 
 
 	return services, nil
 }
+
+// GenerateArchitectureMarkdown uses Gemini to create a readable ARCHITECTURE.md from a list of services.
+func GenerateArchitectureMarkdown(ctx context.Context, services []string) (string, error) {
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" {
+		return "", fmt.Errorf("GEMINI_API_KEY environment variable is not set")
+	}
+
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{
+		APIKey:  apiKey,
+		Backend: genai.BackendGeminiAPI,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create genai client: %v", err)
+	}
+
+	config := &genai.GenerateContentConfig{
+		SystemInstruction: &genai.Content{
+			Parts: []*genai.Part{
+				{Text: "You are an expert cloud architect. Your task is to write a professional and clear ARCHITECTURE.md file based on a list of infrastructure services provided. Use appropriate headings and bullet points. Describe the stack logically (Compute, Storage, AI, etc.). Return ONLY the markdown content."},
+			},
+		},
+	}
+
+	prompt := "Create an ARCHITECTURE.md for a project using these services:\n"
+	for _, s := range services {
+		prompt += fmt.Sprintf("- %s\n", s)
+	}
+
+	resp, err := client.Models.GenerateContent(ctx, "gemini-2.5-flash", genai.Text(prompt), config)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate markdown: %v", err)
+	}
+
+	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
+		return "", fmt.Errorf("no response candidates received from AI")
+	}
+
+	return resp.Candidates[0].Content.Parts[0].Text, nil
+}

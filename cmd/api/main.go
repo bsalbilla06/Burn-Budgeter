@@ -32,6 +32,7 @@ func main() {
 	
 	// AI Analysis
 	mux.HandleFunc("POST /v1/projects/{id}/analyze", handlers.AnalyzeArchitecture)
+	mux.HandleFunc("GET /v1/projects/{id}/export-architecture", handlers.ExportArchitecture)
 	
 	// Reference Data
 	mux.HandleFunc("GET /v1/services", handlers.ListServices)

@@ -71,12 +71,17 @@ Removes a specific service entry from the project stack.
 
 ### Analyze Architecture
 **`POST /projects/{id}/analyze`**
-Parses an `ARCHITECTURE.md` file to automatically detect and suggest services.
+Parses an `ARCHITECTURE.md` file to automatically detect services. 
+**Note:** This will FULLY RESET the project's current tech stack and replace it with the detected services.
 
 **Request Body (multipart/form-data):**
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `architecture` | `file` | The `ARCHITECTURE.md` file to analyze. |
+
+### Export Architecture
+**`GET /projects/{id}/export-architecture`**
+Generates a professional `ARCHITECTURE.md` markdown file based on the project's current tech stack using AI.
 
 ---
 

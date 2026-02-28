@@ -239,16 +239,28 @@ func AnalyzeArchitecture(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Map detected services to database IDs
-	var suggestions []models.ProjectService
+	tx, err := database.DB.Begin()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to start transaction")
+		return
+	}
+	defer tx.Rollback()
+
+	// 1. Clear existing stack
+	_, err = tx.Exec("DELETE FROM project_services WHERE project_id = $1", projectID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to clear existing stack")
+		return
+	}
+
+	var applied []models.ProjectService
 	for _, ds := range detected {
 		var serviceID int
 		// Try fuzzy match on name and provider
-		// We prioritize "Input" for AI models if not specified
 		query := "SELECT id FROM services WHERE provider ILIKE $1"
-		params := []interface{}{"%"+ds.Provider+"%"}
-		
-		nameFilter := "%"+ds.Name+"%"
-		// If it's an AI provider, we try to match the "tier" (e.g. Sonnet, Pro, Mini)
+		params := []interface{}{"%" + ds.Provider + "%"}
+
+		nameFilter := "%" + ds.Name + "%"
 		if ds.Provider == "OpenAI" || ds.Provider == "Anthropic" || ds.Provider == "Gemini" {
 			if strings.Contains(strings.ToLower(ds.Name), "pro") {
 				nameFilter = "%Pro%Input%"
@@ -262,29 +274,85 @@ func AnalyzeArchitecture(w http.ResponseWriter, r *http.Request) {
 					nameFilter = "%Flash%Input%"
 				}
 			} else {
-				// Default to Input
 				nameFilter = "%Input%"
 			}
 		}
-		
+
 		query += " AND name ILIKE $2 LIMIT 1"
 		params = append(params, nameFilter)
 
-		err := database.DB.QueryRow(query, params...).Scan(&serviceID)
-
+		err := tx.QueryRow(query, params...).Scan(&serviceID)
 		if err == nil {
-			suggestions = append(suggestions, models.ProjectService{
-				ProjectID: projectID,
-				ServiceID: serviceID,
-				Quantity:  ds.Quantity,
-			})
+			// 2. Insert new service
+			_, err = tx.Exec(
+				"INSERT INTO project_services (project_id, service_id, quantity) VALUES ($1, $2, $3)",
+				projectID, serviceID, ds.Quantity,
+			)
+			if err == nil {
+				applied = append(applied, models.ProjectService{
+					ProjectID: projectID,
+					ServiceID: serviceID,
+					Quantity:  ds.Quantity,
+				})
+			}
 		}
 	}
 
+	if err := tx.Commit(); err != nil {
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to commit stack update")
+		return
+	}
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"message":     "Analysis complete",
-		"suggestions": suggestions,
+		"message":          "Stack successfully updated from architecture file",
+		"updated_services": applied,
 	})
+}
+
+// ExportArchitecture GET /v1/projects/{id}/export-architecture
+func ExportArchitecture(w http.ResponseWriter, r *http.Request) {
+	userID := getUserID(r)
+	projectID := r.PathValue("id")
+
+	// 1. Fetch current services names/providers
+	rows, err := database.DB.Query(`
+		SELECT s.provider, s.name 
+		FROM project_services ps
+		JOIN services s ON ps.service_id = s.id
+		JOIN projects p ON ps.project_id = p.id
+		WHERE p.id = $1 AND p.user_id = $2`,
+		projectID, userID,
+	)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to fetch project services")
+		return
+	}
+	defer rows.Close()
+
+	var serviceNames []string
+	for rows.Next() {
+		var provider, name string
+		if err := rows.Scan(&provider, &name); err == nil {
+			serviceNames = append(serviceNames, fmt.Sprintf("%s %s", provider, name))
+		}
+	}
+
+	if len(serviceNames) == 0 {
+		respondError(w, http.StatusUnprocessableEntity, "no_services", "Project has no services in its stack to export.")
+		return
+	}
+
+	// 2. Call Gemini to generate markdown
+	markdown, err := parser.GenerateArchitectureMarkdown(r.Context(), serviceNames)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "ai_error", "Failed to generate architecture markdown: "+err.Error())
+		return
+	}
+
+	// 3. Return as text/markdown or JSON
+	w.Header().Set("Content-Type", "text/markdown")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(markdown))
 }
 
 // ListServices GET /v1/services
