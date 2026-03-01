@@ -9,8 +9,6 @@ info:
 servers:
   - url: http://burnbudgeter.bsalbilla06.com/v1
     description: Production server
-  - url: http://localhost:8080/v1
-    description: Local development server
 
 tags:
   - name: Projects
