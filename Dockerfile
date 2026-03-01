@@ -1,5 +1,5 @@
 # Stage 1: Build the Go binary
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Set the working directory
 WORKDIR /app
@@ -30,7 +30,7 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates
 
 # Copy the binary from the builder stage
-COPY --from=builder /app/bin/api ./api
+COPY --from=builder /app/bin/api ./burnbudgeter
 
 # Copy the openapi.yaml for Scalar documentation
 COPY --from=builder /app/api/openapi.yaml ./api/openapi.yaml
@@ -39,4 +39,4 @@ COPY --from=builder /app/api/openapi.yaml ./api/openapi.yaml
 EXPOSE 8080
 
 # Run the application
-CMD ["./api"]
+CMD ["./burnbudgeter"]
