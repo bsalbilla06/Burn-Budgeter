@@ -21,7 +21,7 @@ The full interactive API documentation is available at:
 
 ## 🛠 Tech Stack
 
-*   **Language:** Go 1.22+ (Standard Library `net/http`)
+*   **Language:** Go 1.25+ (Standard Library `net/http`)
 *   **Database:** Supabase (PostgreSQL)
 *   **AI Engine:** Google Gemini API
 *   **Documentation:** OpenAPI 3.0 (Scalar)
@@ -30,7 +30,7 @@ The full interactive API documentation is available at:
 
 ### Prerequisites
 
-- Go 1.22 or higher
+- Go 1.25 or higher
 - A Supabase project (PostgreSQL)
 - A Google Gemini API Key
 
