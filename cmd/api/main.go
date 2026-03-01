@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/user/burnbudgeter/internal/database"
@@ -82,8 +84,15 @@ func main() {
 		w.Write([]byte(`{"status": "up", "database": "connected"}`))
 	})
 
-	port := ":8080"
-	fmt.Printf("Burn Budgeter API starting on port %s (AUTH DISABLED)...\n", port)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	if !strings.HasPrefix(port, ":") {
+		port = ":" + port
+	}
+
+	fmt.Printf("Burn Budgeter API starting on port %s\n", port)
 	if err := http.ListenAndServe(port, mux); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}

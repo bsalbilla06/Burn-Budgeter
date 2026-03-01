@@ -7,6 +7,8 @@ info:
     This API is public and does not require authentication.
   version: 1.0.0
 servers:
+  - url: http://burnbudgeter.bsalbilla06.com/v1
+    description: Production server
   - url: http://localhost:8080/v1
     description: Local development server
 

@@ -2,7 +2,7 @@ services:
   api:
     build: .
     ports:
-      - "8080:8080"
+      - "80:80"
     environment:
       - SUPABASE_DB_CONN=${SUPABASE_DB_CONN}
       - GEMINI_API_KEY=${GEMINI_API_KEY}

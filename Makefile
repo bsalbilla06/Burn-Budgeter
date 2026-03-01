@@ -13,7 +13,10 @@ clean:
 	rm -rf bin/
 
 docker-build:
-	docker compose build
+	docker build --platform linux/amd64 -t us-central1-docker.pkg.dev/burn-budgeter/burn-budgeter/api:latest .
+
+docker-push:
+	docker push us-central1-docker.pkg.dev/burn-budgeter/burn-budgeter/api:latest
 
 docker-up:
 	docker compose up -d

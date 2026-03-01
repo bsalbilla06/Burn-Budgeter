@@ -35,8 +35,11 @@ COPY --from=builder /app/bin/api ./burnbudgeter
 # Copy the openapi.yaml for Scalar documentation
 COPY --from=builder /app/api/openapi.yaml ./api/openapi.yaml
 
+# Set the port environment variable
+ENV PORT=80
+
 # Expose the API port
-EXPOSE 8080
+EXPOSE 80
 
 # Run the application
 CMD ["./burnbudgeter"]

@@ -22,7 +22,10 @@ func respondJSON(w http.ResponseWriter, status int, data interface{}) {
 	}
 }
 
-func respondError(w http.ResponseWriter, status int, errCode, message string) {
+func respondError(w http.ResponseWriter, status int, errCode, message string, err error) {
+	if err != nil {
+		log.Printf("[ERROR] %s: %v", message, err)
+	}
 	respondJSON(w, status, models.ErrorResponse{
 		Error:   errCode,
 		Message: message,
@@ -40,12 +43,12 @@ func CreateProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "bad_request", "Invalid JSON body")
+		respondError(w, http.StatusBadRequest, "bad_request", "Invalid JSON body", err)
 		return
 	}
 
 	if req.Name == "" || req.CashOnHand < 0 {
-		respondError(w, http.StatusUnprocessableEntity, "validation_failed", "Project name cannot be empty and cash_on_hand must be non-negative.")
+		respondError(w, http.StatusUnprocessableEntity, "validation_failed", "Project name cannot be empty and cash_on_hand must be non-negative.", nil)
 		return
 	}
 
@@ -61,7 +64,7 @@ func CreateProject(w http.ResponseWriter, r *http.Request) {
 	).Scan(&project.ID, &project.Name, &project.CashOnHand, &project.Currency, &project.CreatedAt)
 
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "server_error", "Failed to create project: "+err.Error())
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to create project", err)
 		return
 	}
 
@@ -79,7 +82,7 @@ func GetProject(w http.ResponseWriter, r *http.Request) {
 	).Scan(&project.ID, &project.Name, &project.CashOnHand, &project.Currency, &project.CreatedAt)
 
 	if err != nil {
-		respondError(w, http.StatusNotFound, "not_found", "Project not found.")
+		respondError(w, http.StatusNotFound, "not_found", "Project not found.", err)
 		return
 	}
 
@@ -94,7 +97,7 @@ func GetProject(w http.ResponseWriter, r *http.Request) {
 	).Scan(&burnRate)
 
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "server_error", "Failed to calculate burn rate")
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to calculate burn rate", err)
 		return
 	}
 
@@ -118,7 +121,7 @@ func UpdateProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "bad_request", "Invalid JSON body")
+		respondError(w, http.StatusBadRequest, "bad_request", "Invalid JSON body", err)
 		return
 	}
 
@@ -135,7 +138,7 @@ func UpdateProject(w http.ResponseWriter, r *http.Request) {
 	).Scan(&project.ID, &project.Name, &project.CashOnHand, &project.Currency, &project.CreatedAt)
 
 	if err != nil {
-		respondError(w, http.StatusNotFound, "not_found", "Project not found")
+		respondError(w, http.StatusNotFound, "not_found", "Project not found", err)
 		return
 	}
 
@@ -147,13 +150,13 @@ func DeleteProject(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("id")
 	res, err := database.DB.Exec("DELETE FROM projects WHERE id = $1", projectID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "server_error", "Failed to delete project")
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to delete project", err)
 		return
 	}
 
 	rows, _ := res.RowsAffected()
 	if rows == 0 {
-		respondError(w, http.StatusNotFound, "not_found", "Project not found")
+		respondError(w, http.StatusNotFound, "not_found", "Project not found", nil)
 		return
 	}
 
@@ -170,7 +173,7 @@ func AddServiceToStack(w http.ResponseWriter, r *http.Request) {
 	var pExists bool
 	err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1)", projectID).Scan(&pExists)
 	if err != nil || !pExists {
-		respondError(w, http.StatusNotFound, "not_found", "Project not found")
+		respondError(w, http.StatusNotFound, "not_found", "Project not found", err)
 		return
 	}
 
@@ -180,7 +183,7 @@ func AddServiceToStack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "bad_request", "Invalid JSON body")
+		respondError(w, http.StatusBadRequest, "bad_request", "Invalid JSON body", err)
 		return
 	}
 
@@ -188,7 +191,7 @@ func AddServiceToStack(w http.ResponseWriter, r *http.Request) {
 	var exists bool
 	err = database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM services WHERE id = $1)", req.ServiceID).Scan(&exists)
 	if err != nil || !exists {
-		respondError(w, http.StatusNotFound, "not_found", "Service not found.")
+		respondError(w, http.StatusNotFound, "not_found", "Service not found.", err)
 		return
 	}
 
@@ -201,7 +204,7 @@ func AddServiceToStack(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "server_error", "Failed to add service to stack: "+err.Error())
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to add service to stack", err)
 		return
 	}
 
@@ -215,13 +218,13 @@ func RemoveServiceFromStack(w http.ResponseWriter, r *http.Request) {
 
 	res, err := database.DB.Exec("DELETE FROM project_services WHERE project_id = $1 AND service_id = $2", projectID, serviceID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "server_error", "Failed to remove service")
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to remove service", err)
 		return
 	}
 
 	rows, _ := res.RowsAffected()
 	if rows == 0 {
-		respondError(w, http.StatusNotFound, "not_found", "Service not found in stack.")
+		respondError(w, http.StatusNotFound, "not_found", "Service not found in stack.", nil)
 		return
 	}
 
@@ -238,27 +241,27 @@ func AnalyzeArchitecture(w http.ResponseWriter, r *http.Request) {
 	var exists bool
 	err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1)", projectID).Scan(&exists)
 	if err != nil || !exists {
-		respondError(w, http.StatusNotFound, "not_found", "Project not found")
+		respondError(w, http.StatusNotFound, "not_found", "Project not found", err)
 		return
 	}
 
 	// Limit request size to 1MB
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
-		respondError(w, http.StatusBadRequest, "bad_request", "File is too large or invalid form data")
+		respondError(w, http.StatusBadRequest, "bad_request", "File is too large or invalid form data", err)
 		return
 	}
 
 	file, _, err := r.FormFile("architecture")
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "bad_request", "Architecture file is missing")
+		respondError(w, http.StatusBadRequest, "bad_request", "Architecture file is missing", err)
 		return
 	}
 	defer file.Close()
 
 	contentBytes, err := io.ReadAll(file)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "server_error", "Failed to read architecture file")
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to read architecture file", err)
 		return
 	}
 	content := string(contentBytes)
@@ -266,20 +269,20 @@ func AnalyzeArchitecture(w http.ResponseWriter, r *http.Request) {
 	// Call Gemini AI API to parse architecture
 	detected, err := parser.ParseArchitecture(r.Context(), content)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "ai_error", "Failed to analyze architecture: "+err.Error())
+		respondError(w, http.StatusInternalServerError, "ai_error", "Failed to analyze architecture", err)
 		return
 	}
 
 	tx, err := database.DB.Begin()
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "server_error", "Failed to start transaction")
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to start transaction", err)
 		return
 	}
 	defer tx.Rollback()
 
 	_, err = tx.Exec("DELETE FROM project_services WHERE project_id = $1", projectID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "server_error", "Failed to clear existing stack")
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to clear existing stack", err)
 		return
 	}
 
@@ -318,7 +321,7 @@ func AnalyzeArchitecture(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := tx.Commit(); err != nil {
-		respondError(w, http.StatusInternalServerError, "server_error", "Failed to commit stack update")
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to commit stack update", err)
 		return
 	}
 
@@ -333,7 +336,7 @@ func ExportArchitecture(w http.ResponseWriter, r *http.Request) {
 	var exists bool
 	err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1)", projectID).Scan(&exists)
 	if err != nil || !exists {
-		respondError(w, http.StatusNotFound, "not_found", "Project not found")
+		respondError(w, http.StatusNotFound, "not_found", "Project not found", err)
 		return
 	}
 
@@ -342,7 +345,7 @@ func ExportArchitecture(w http.ResponseWriter, r *http.Request) {
 		JOIN services s ON ps.service_id = s.id
 		WHERE ps.project_id = $1`, projectID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "server_error", "Failed to fetch project services")
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to fetch project services", err)
 		return
 	}
 	defer rows.Close()
@@ -356,13 +359,13 @@ func ExportArchitecture(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(serviceNames) == 0 {
-		respondError(w, http.StatusUnprocessableEntity, "no_services", "Project has no services to export.")
+		respondError(w, http.StatusUnprocessableEntity, "no_services", "Project has no services to export.", nil)
 		return
 	}
 
 	markdown, err := parser.GenerateArchitectureMarkdown(r.Context(), serviceNames)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "ai_error", "Failed to generate architecture: "+err.Error())
+		respondError(w, http.StatusInternalServerError, "ai_error", "Failed to generate architecture", err)
 		return
 	}
 
@@ -389,7 +392,7 @@ func ListServices(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := database.DB.Query(query, params...)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "server_error", "Failed to fetch services")
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to fetch services", err)
 		return
 	}
 	defer rows.Close()
@@ -398,7 +401,7 @@ func ListServices(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var s models.Service
 		if err := rows.Scan(&s.ID, &s.Provider, &s.Name, &s.Unit, &s.PricePerUnit); err != nil {
-			respondError(w, http.StatusInternalServerError, "server_error", "Failed to scan services")
+			respondError(w, http.StatusInternalServerError, "server_error", "Failed to scan services", err)
 			return
 		}
 		services = append(services, s)
@@ -417,12 +420,12 @@ func CreateService(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "bad_request", "Invalid JSON body")
+		respondError(w, http.StatusBadRequest, "bad_request", "Invalid JSON body", err)
 		return
 	}
 
 	if req.Provider == "" || req.Name == "" || req.Unit == "" {
-		respondError(w, http.StatusUnprocessableEntity, "validation_failed", "Provider, name, and unit are required.")
+		respondError(w, http.StatusUnprocessableEntity, "validation_failed", "Provider, name, and unit are required.", nil)
 		return
 	}
 
@@ -435,7 +438,7 @@ func CreateService(w http.ResponseWriter, r *http.Request) {
 	).Scan(&s.ID, &s.Provider, &s.Name, &s.Unit, &s.PricePerUnit)
 
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "server_error", "Failed to create custom service: "+err.Error())
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to create custom service", err)
 		return
 	}
 
@@ -453,7 +456,7 @@ func UpdateService(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "bad_request", "Invalid JSON body")
+		respondError(w, http.StatusBadRequest, "bad_request", "Invalid JSON body", err)
 		return
 	}
 
@@ -470,7 +473,7 @@ func UpdateService(w http.ResponseWriter, r *http.Request) {
 	).Scan(&s.ID, &s.Provider, &s.Name, &s.Unit, &s.PricePerUnit)
 
 	if err != nil {
-		respondError(w, http.StatusNotFound, "not_found", "Service not found")
+		respondError(w, http.StatusNotFound, "not_found", "Service not found", err)
 		return
 	}
 
@@ -485,24 +488,24 @@ func DeleteService(w http.ResponseWriter, r *http.Request) {
 	var inUse bool
 	err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM project_services WHERE service_id = $1)", serviceID).Scan(&inUse)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "server_error", "Failed to check service dependencies")
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to check service dependencies", err)
 		return
 	}
 
 	if inUse {
-		respondError(w, http.StatusConflict, "dependency_error", "Cannot delete service because it is currently used in one or more project stacks.")
+		respondError(w, http.StatusConflict, "dependency_error", "Cannot delete service because it is currently used in one or more project stacks.", nil)
 		return
 	}
 
 	res, err := database.DB.Exec("DELETE FROM services WHERE id = $1", serviceID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "server_error", "Failed to delete service")
+		respondError(w, http.StatusInternalServerError, "server_error", "Failed to delete service", err)
 		return
 	}
 
 	rows, _ := res.RowsAffected()
 	if rows == 0 {
-		respondError(w, http.StatusNotFound, "not_found", "Service not found")
+		respondError(w, http.StatusNotFound, "not_found", "Service not found", nil)
 		return
 	}
 
