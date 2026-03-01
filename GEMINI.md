@@ -85,4 +85,4 @@ The following variables are required in your `.env` file for Supabase and Gemini
 - [x] Implement AI Architecture Exporter.
 - [x] Transition to real Supabase PostgreSQL.
 - [x] Enable Custom Service CRUD.
-- [ ] Finalize the OpenAPI specification in `api/openapi.yaml`.
+- [x] Finalize the OpenAPI specification in `api/openapi.yaml`.

@@ -145,11 +145,18 @@ func UpdateProject(w http.ResponseWriter, r *http.Request) {
 // DeleteProject DELETE /v1/projects/{id}
 func DeleteProject(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("id")
-	_, err := database.DB.Exec("DELETE FROM projects WHERE id = $1", projectID)
+	res, err := database.DB.Exec("DELETE FROM projects WHERE id = $1", projectID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "server_error", "Failed to delete project")
 		return
 	}
+
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		respondError(w, http.StatusNotFound, "not_found", "Project not found")
+		return
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -158,6 +165,14 @@ func DeleteProject(w http.ResponseWriter, r *http.Request) {
 // AddServiceToStack POST /v1/projects/{id}/stack
 func AddServiceToStack(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("id")
+
+	// Check if project exists
+	var pExists bool
+	err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1)", projectID).Scan(&pExists)
+	if err != nil || !pExists {
+		respondError(w, http.StatusNotFound, "not_found", "Project not found")
+		return
+	}
 
 	var req struct {
 		ServiceID int     `json:"service_id"`
@@ -171,7 +186,7 @@ func AddServiceToStack(w http.ResponseWriter, r *http.Request) {
 
 	// Check if service exists
 	var exists bool
-	err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM services WHERE id = $1)", req.ServiceID).Scan(&exists)
+	err = database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM services WHERE id = $1)", req.ServiceID).Scan(&exists)
 	if err != nil || !exists {
 		respondError(w, http.StatusNotFound, "not_found", "Service not found.")
 		return
@@ -218,6 +233,14 @@ func RemoveServiceFromStack(w http.ResponseWriter, r *http.Request) {
 // AnalyzeArchitecture POST /v1/projects/{id}/analyze
 func AnalyzeArchitecture(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("id")
+
+	// Check if project exists
+	var exists bool
+	err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1)", projectID).Scan(&exists)
+	if err != nil || !exists {
+		respondError(w, http.StatusNotFound, "not_found", "Project not found")
+		return
+	}
 
 	// Limit request size to 1MB
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
@@ -305,6 +328,14 @@ func AnalyzeArchitecture(w http.ResponseWriter, r *http.Request) {
 // ExportArchitecture GET /v1/projects/{id}/export-architecture
 func ExportArchitecture(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("id")
+
+	// Check if project exists
+	var exists bool
+	err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1)", projectID).Scan(&exists)
+	if err != nil || !exists {
+		respondError(w, http.StatusNotFound, "not_found", "Project not found")
+		return
+	}
 
 	rows, err := database.DB.Query(`
 		SELECT s.provider, s.name FROM project_services ps
@@ -463,10 +494,17 @@ func DeleteService(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = database.DB.Exec("DELETE FROM services WHERE id = $1", serviceID)
+	res, err := database.DB.Exec("DELETE FROM services WHERE id = $1", serviceID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "server_error", "Failed to delete service")
 		return
 	}
+
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		respondError(w, http.StatusNotFound, "not_found", "Service not found")
+		return
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }

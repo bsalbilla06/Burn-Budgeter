@@ -17,6 +17,22 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  database: { type: string }
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  database: { type: string }
 
   /projects:
     post:
@@ -38,6 +54,12 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Project' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /projects/{id}:
     get:
@@ -53,6 +75,10 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Project' }
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
     patch:
       summary: Update project
       parameters:
@@ -72,6 +98,15 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
     delete:
       summary: Delete project
       parameters:
@@ -82,6 +117,10 @@ paths:
       responses:
         '204':
           description: No Content
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /projects/{id}/stack:
     post:
@@ -104,6 +143,18 @@ paths:
       responses:
         '200':
           description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /projects/{id}/stack/{sid}:
     delete:
@@ -120,6 +171,10 @@ paths:
       responses:
         '204':
           description: No Content
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /projects/{id}/analyze:
     post:
@@ -140,6 +195,21 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  updated_services:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProjectService' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /projects/{id}/export-architecture:
     get:
@@ -155,6 +225,12 @@ paths:
           content:
             text/markdown:
               schema: { type: string }
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /services:
     get:
@@ -173,6 +249,8 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Service' }
+        '500':
+          $ref: '#/components/responses/ServerError'
     post:
       summary: Create custom service
       requestBody:
@@ -190,6 +268,15 @@ paths:
       responses:
         '201':
           description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Service' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /services/{id}:
     patch:
@@ -212,6 +299,15 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Service' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
     delete:
       summary: Delete service
       parameters:
@@ -222,8 +318,12 @@ paths:
       responses:
         '204':
           description: No Content
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
-          description: Conflict - Service is used in a project
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
 components:
   schemas:
@@ -245,3 +345,43 @@ components:
         name: { type: string }
         unit: { type: string }
         price_per_unit: { type: number }
+    ProjectService:
+      type: object
+      properties:
+        project_id: { type: string, format: uuid }
+        service_id: { type: integer }
+        quantity: { type: number }
+        is_optimized: { type: boolean }
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string }
+        message: { type: string }
+
+  responses:
+    BadRequest:
+      description: Bad Request - Invalid JSON or missing parameters
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Not Found - Resource does not exist
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Unprocessable Entity - Validation failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Conflict - Resource is in use or state conflict
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

@@ -27,15 +27,15 @@ func main() {
 	mux.HandleFunc("GET /v1/projects/{id}", handlers.GetProject)
 	mux.HandleFunc("PATCH /v1/projects/{id}", handlers.UpdateProject)
 	mux.HandleFunc("DELETE /v1/projects/{id}", handlers.DeleteProject)
-	
+
 	// Service Stack
 	mux.HandleFunc("POST /v1/projects/{id}/stack", handlers.AddServiceToStack)
 	mux.HandleFunc("DELETE /v1/projects/{id}/stack/{sid}", handlers.RemoveServiceFromStack)
-	
+
 	// AI Analysis
 	mux.HandleFunc("POST /v1/projects/{id}/analyze", handlers.AnalyzeArchitecture)
 	mux.HandleFunc("GET /v1/projects/{id}/export-architecture", handlers.ExportArchitecture)
-	
+
 	// Reference Data
 	mux.HandleFunc("GET /v1/services", handlers.ListServices)
 	mux.HandleFunc("POST /v1/services", handlers.CreateService)
@@ -60,6 +60,10 @@ func main() {
 </html>`
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(html))
+	})
+
+	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/docs", http.StatusMovedPermanently)
 	})
 
 	// Serve openapi.yaml for Scalar
