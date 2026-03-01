@@ -10,33 +10,49 @@ servers:
   - url: http://localhost:8080/v1
     description: Local development server
 
+tags:
+  - name: Projects
+    description: Manage infrastructure projects and their financial metrics.
+  - name: Service Stack
+    description: Manage the specific cloud and AI services assigned to a project.
+  - name: AI Automation
+    description: Leverage Gemini AI to parse or generate project architecture files.
+  - name: Service Catalog
+    description: Reference and manage the global catalog of available cloud and AI services.
+  - name: System
+    description: System health and diagnostic endpoints.
+
 paths:
   /health:
     get:
+      tags: [System]
       summary: API Health Check
+      description: Returns the current status of the API and its database connection.
       responses:
         '200':
-          description: OK
+          description: System is healthy and database is connected.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status: { type: string }
-                  database: { type: string }
+                  status: { type: string, example: "up" }
+                  database: { type: string, example: "connected" }
         '500':
-          description: Internal Server Error
+          description: System is experiencing issues.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status: { type: string }
-                  database: { type: string }
+                  status: { type: string, example: "down" }
+                  database: { type: string, example: "error" }
 
   /projects:
     post:
-      summary: Create a project
+      tags: [Projects]
+      summary: Create a new project
+      description: Initialize a new project with a starting budget and currency.
       requestBody:
         required: true
         content:
@@ -45,12 +61,22 @@ paths:
               type: object
               required: [name, cash_on_hand]
               properties:
-                name: { type: string }
-                cash_on_hand: { type: number }
-                currency: { type: string, default: "USD" }
+                name: 
+                  type: string
+                  description: The name of the project.
+                  example: "Project Phoenix"
+                cash_on_hand: 
+                  type: number
+                  description: Initial budget/cash available for the project.
+                  example: 50000
+                currency: 
+                  type: string
+                  default: "USD"
+                  description: The ISO currency code used for financial tracking.
+                  example: "USD"
       responses:
         '201':
-          description: Created
+          description: Project created successfully.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Project' }
@@ -63,15 +89,18 @@ paths:
 
   /projects/{id}:
     get:
+      tags: [Projects]
       summary: Get project details
+      description: Retrieve detailed information about a project, including calculated burn rate and runway.
       parameters:
         - name: id
           in: path
           required: true
+          description: The unique UUID of the project.
           schema: { type: string, format: uuid }
       responses:
         '200':
-          description: OK
+          description: Project details retrieved successfully.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Project' }
@@ -80,11 +109,14 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
     patch:
+      tags: [Projects]
       summary: Update project
+      description: Update the name, budget, or currency of an existing project.
       parameters:
         - name: id
           in: path
           required: true
+          description: The unique UUID of the project.
           schema: { type: string, format: uuid }
       requestBody:
         content:
@@ -92,12 +124,18 @@ paths:
             schema:
               type: object
               properties:
-                name: { type: string }
-                cash_on_hand: { type: number }
-                currency: { type: string }
+                name: 
+                  type: string
+                  description: Updated name for the project.
+                cash_on_hand: 
+                  type: number
+                  description: Updated budget or current cash on hand.
+                currency: 
+                  type: string
+                  description: Updated currency code.
       responses:
         '200':
-          description: OK
+          description: Project updated successfully.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Project' }
@@ -108,15 +146,18 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
     delete:
+      tags: [Projects]
       summary: Delete project
+      description: Permanently remove a project and its associated service stack.
       parameters:
         - name: id
           in: path
           required: true
+          description: The unique UUID of the project to delete.
           schema: { type: string, format: uuid }
       responses:
         '204':
-          description: No Content
+          description: Project deleted successfully.
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -124,11 +165,14 @@ paths:
 
   /projects/{id}/stack:
     post:
-      summary: Add/Update service in stack
+      tags: [Service Stack]
+      summary: Add or update service in stack
+      description: Add a service from the catalog to the project stack or update the quantity of an existing service.
       parameters:
         - name: id
           in: path
           required: true
+          description: The UUID of the project.
           schema: { type: string, format: uuid }
       requestBody:
         required: true
@@ -138,17 +182,21 @@ paths:
               type: object
               required: [service_id, quantity]
               properties:
-                service_id: { type: integer }
-                quantity: { type: number }
+                service_id: 
+                  type: integer
+                  description: The ID of the service from the catalog.
+                quantity: 
+                  type: number
+                  description: The monthly quantity of units used (e.g., hours for VM, millions of tokens for AI).
       responses:
         '200':
-          description: Success
+          description: Service added or updated in project stack.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  message: { type: string }
+                  message: { type: string, example: "Service added to stack" }
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -158,19 +206,23 @@ paths:
 
   /projects/{id}/stack/{sid}:
     delete:
+      tags: [Service Stack]
       summary: Remove service from stack
+      description: Remove a specific service from the project's infrastructure stack.
       parameters:
         - name: id
           in: path
           required: true
+          description: The UUID of the project.
           schema: { type: string, format: uuid }
         - name: sid
           in: path
           required: true
+          description: The ID of the service to remove.
           schema: { type: integer }
       responses:
         '204':
-          description: No Content
+          description: Service removed from stack successfully.
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -178,12 +230,14 @@ paths:
 
   /projects/{id}/analyze:
     post:
+      tags: [AI Automation]
       summary: Analyze ARCHITECTURE.md
-      description: Resets and updates stack based on uploaded file.
+      description: Resets the project stack and updates it based on the contents of an uploaded ARCHITECTURE.md file using Gemini AI.
       parameters:
         - name: id
           in: path
           required: true
+          description: The UUID of the project to update.
           schema: { type: string, format: uuid }
       requestBody:
         content:
@@ -191,16 +245,19 @@ paths:
             schema:
               type: object
               properties:
-                architecture: { type: string, format: binary }
+                architecture: 
+                  type: string
+                  format: binary
+                  description: The markdown file containing the infrastructure description.
       responses:
         '200':
-          description: OK
+          description: Architecture parsed and stack updated successfully.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  message: { type: string }
+                  message: { type: string, example: "Stack updated" }
                   updated_services:
                     type: array
                     items: { $ref: '#/components/schemas/ProjectService' }
@@ -213,37 +270,45 @@ paths:
 
   /projects/{id}/export-architecture:
     get:
+      tags: [AI Automation]
       summary: Export ARCHITECTURE.md
+      description: Generate a professional ARCHITECTURE.md file based on the current project stack using Gemini AI.
       parameters:
         - name: id
           in: path
           required: true
+          description: The UUID of the project to export.
           schema: { type: string, format: uuid }
       responses:
         '200':
-          description: OK
+          description: ARCHITECTURE.md generated successfully.
           content:
             text/markdown:
               schema: { type: string }
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
-          $ref: '#/components/responses/ValidationError'
+          description: Project has no services to export.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '500':
           $ref: '#/components/responses/ServerError'
 
   /services:
     get:
-      summary: List all services
+      tags: [Service Catalog]
+      summary: List all available services
+      description: Retrieve a list of all cloud and AI services available in the global catalog.
       parameters:
         - name: provider
           in: query
-          description: Optional filter to limit results by provider (e.g. AWS, GCP, OpenAI)
+          description: Optional filter to limit results by provider (e.g. AWS, GCP, OpenAI).
           required: false
           schema: { type: string }
       responses:
         '200':
-          description: OK
+          description: List of services retrieved successfully.
           content:
             application/json:
               schema:
@@ -252,7 +317,9 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
     post:
+      tags: [Service Catalog]
       summary: Create custom service
+      description: Add a custom service or pricing tier to the global catalog.
       requestBody:
         required: true
         content:
@@ -261,13 +328,21 @@ paths:
               type: object
               required: [provider, name, unit, price_per_unit]
               properties:
-                provider: { type: string }
-                name: { type: string }
-                unit: { type: string }
-                price_per_unit: { type: number }
+                provider: 
+                  type: string
+                  description: The service provider (e.g., AWS, Custom Cloud).
+                name: 
+                  type: string
+                  description: The name of the service or model.
+                unit: 
+                  type: string
+                  description: The billing unit (e.g., "hour", "1M tokens").
+                price_per_unit: 
+                  type: number
+                  description: The cost per unit in the default currency.
       responses:
         '201':
-          description: Created
+          description: Custom service created successfully.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Service' }
@@ -280,11 +355,14 @@ paths:
 
   /services/{id}:
     patch:
+      tags: [Service Catalog]
       summary: Update service
+      description: Update the provider, name, or pricing of an existing service in the catalog.
       parameters:
         - name: id
           in: path
           required: true
+          description: The unique ID of the service.
           schema: { type: integer }
       requestBody:
         content:
@@ -298,7 +376,7 @@ paths:
                 price_per_unit: { type: number }
       responses:
         '200':
-          description: OK
+          description: Service updated successfully.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Service' }
@@ -309,15 +387,18 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
     delete:
+      tags: [Service Catalog]
       summary: Delete service
+      description: Remove a service from the catalog. Note that services in use by any project stack cannot be deleted.
       parameters:
         - name: id
           in: path
           required: true
+          description: The ID of the service to delete.
           schema: { type: integer }
       responses:
         '204':
-          description: No Content
+          description: Service deleted successfully.
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -329,59 +410,96 @@ components:
   schemas:
     Project:
       type: object
+      description: Represents a project's financial and infrastructure state.
       properties:
-        id: { type: string, format: uuid }
-        name: { type: string }
-        cash_on_hand: { type: number }
-        currency: { type: string }
-        created_at: { type: string, format: date-time }
-        burn_rate: { type: number }
-        runway: { type: number }
+        id: 
+          type: string
+          format: uuid
+          description: Unique identifier for the project.
+        name: 
+          type: string
+          description: Human-readable name of the project.
+        cash_on_hand: 
+          type: number
+          description: Current remaining budget for the project.
+        currency: 
+          type: string
+          description: Currency code for financial metrics.
+        created_at: 
+          type: string
+          format: date-time
+          description: Timestamp when the project was created.
+        burn_rate: 
+          type: number
+          description: Total monthly cost of all services in the project's stack.
+        runway: 
+          type: number
+          description: Estimated months remaining before budget depletion (-1 for infinite).
     Service:
       type: object
+      description: A service available for use in project stacks.
       properties:
-        id: { type: integer }
-        provider: { type: string }
-        name: { type: string }
-        unit: { type: string }
-        price_per_unit: { type: number }
+        id: 
+          type: integer
+          description: Unique identifier for the service.
+        provider: 
+          type: string
+          description: Cloud or AI provider name.
+        name: 
+          type: string
+          description: Name of the service or model.
+        unit: 
+          type: string
+          description: The unit of measurement for billing.
+        price_per_unit: 
+          type: number
+          description: Cost per unit.
     ProjectService:
       type: object
+      description: Linking object between a project and a service, including usage quantity.
       properties:
         project_id: { type: string, format: uuid }
         service_id: { type: integer }
-        quantity: { type: number }
-        is_optimized: { type: boolean }
+        quantity: 
+          type: number
+          description: Monthly usage amount.
+        is_optimized: 
+          type: boolean
+          description: Whether the service usage has been optimized for cost.
     Error:
       type: object
       required: [error, message]
       properties:
-        error: { type: string }
-        message: { type: string }
+        error: 
+          type: string
+          description: Short machine-readable error code.
+        message: 
+          type: string
+          description: Human-readable explanation of the error.
 
   responses:
     BadRequest:
-      description: Bad Request - Invalid JSON or missing parameters
+      description: The request is invalid due to malformed JSON or missing parameters.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     NotFound:
-      description: Not Found - Resource does not exist
+      description: The requested resource was not found.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     ValidationError:
-      description: Unprocessable Entity - Validation failed
+      description: Validation failed for one or more fields.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     Conflict:
-      description: Conflict - Resource is in use or state conflict
+      description: The operation could not be completed due to a conflict (e.g., service in use).
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     ServerError:
-      description: Internal Server Error
+      description: An internal server error occurred while processing the request.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
